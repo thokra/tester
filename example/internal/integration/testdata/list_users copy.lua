@@ -20,7 +20,7 @@ Test.gql("test users", function(t)
 			users = {
 				{
 					id = Save("user_id"),
-					name = "John Ddoe",
+					name = "John Dsoe",
 					email = Ignore(),
 				}
 			}
