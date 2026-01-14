@@ -39,7 +39,7 @@ func (p *PubSub) Name() string {
 	return "pubsub"
 }
 
-func (g *PubSub) Functions() []*spec.Function {
+func (p *PubSub) Functions() []*spec.Function {
 	return []*spec.Function{
 		{
 			Name: "check",
@@ -56,12 +56,12 @@ func (g *PubSub) Functions() []*spec.Function {
 				},
 			},
 			Doc:  "Check comment",
-			Func: g.check,
+			Func: p.check,
 		},
 	}
 }
 
-func (g *PubSub) HelperFunctions() []*spec.Function {
+func (p *PubSub) HelperFunctions() []*spec.Function {
 	return []*spec.Function{
 		{
 			Name: "emptyPubSubTopic",
@@ -73,20 +73,20 @@ func (g *PubSub) HelperFunctions() []*spec.Function {
 				},
 			},
 			Doc:  "Check comment",
-			Func: g.emptyTopic,
+			Func: p.emptyTopic,
 		},
 	}
 }
 
-func (r *PubSub) check(L *lua.LState) int {
+func (p *PubSub) check(L *lua.LState) int {
 	topic := L.CheckString(1)
 	tbl := L.CheckTable(2)
 
-	if !r.hasTopic(topic) {
-		L.RaiseError("topic %q not registered, has: %v", topic, r.topicsNames())
+	if !p.hasTopic(topic) {
+		L.RaiseError("topic %q not registered, has: %v", topic, p.topicsNames())
 	}
 
-	msgs := r.messages(topic)
+	msgs := p.messages(topic)
 	if len(msgs) == 0 {
 		L.RaiseError("no messages received on topic %q", topic)
 	}
@@ -116,17 +116,17 @@ func (r *PubSub) check(L *lua.LState) int {
 	return 0
 }
 
-func (r *PubSub) emptyTopic(L *lua.LState) int {
+func (p *PubSub) emptyTopic(L *lua.LState) int {
 	topic := L.CheckString(1)
 
-	r.lock.Lock()
-	defer r.lock.Unlock()
+	p.lock.Lock()
+	defer p.lock.Unlock()
 
-	if _, ok := r.topics[topic]; !ok {
+	if _, ok := p.topics[topic]; !ok {
 		return 0
 	}
 
-	r.topics[topic] = PubSubTopic{}
+	p.topics[topic] = PubSubTopic{}
 	return 0
 }
 

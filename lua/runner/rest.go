@@ -16,6 +16,7 @@ import (
 
 type REST struct {
 	server   http.Handler
+	headers  http.Header
 	response *httptest.ResponseRecorder
 }
 
@@ -29,8 +30,25 @@ func (r *REST) Name() string {
 	return "rest"
 }
 
-func (s *REST) Functions() []*spec.Function {
+func (r *REST) Functions() []*spec.Function {
 	return []*spec.Function{
+		{
+			Name: "addHeader",
+			Args: []spec.Argument{
+				{
+					Name: "key",
+					Type: []spec.ArgumentType{spec.ArgumentTypeString},
+					Doc:  "The header key",
+				},
+				{
+					Name: "value",
+					Type: []spec.ArgumentType{spec.ArgumentTypeString},
+					Doc:  "The header value",
+				},
+			},
+			Doc:  "Add a header to the request",
+			Func: r.addHeader,
+		},
 		{
 			Name: "send",
 			Args: []spec.Argument{
@@ -51,7 +69,7 @@ func (s *REST) Functions() []*spec.Function {
 				},
 			},
 			Doc:  "Send http request",
-			Func: s.send,
+			Func: r.send,
 		},
 		{
 			Name: "check",
@@ -68,7 +86,7 @@ func (s *REST) Functions() []*spec.Function {
 				},
 			},
 			Doc:  "Check the response done by send",
-			Func: s.check,
+			Func: r.check,
 		},
 	}
 }
@@ -116,6 +134,10 @@ func (r *REST) send(L *lua.LState) int {
 		panic(fmt.Errorf("rest.Run: unable to create request: %w", err))
 	}
 
+	for k := range r.headers {
+		req.Header.Add(k, r.headers.Get(k))
+	}
+
 	r.response = httptest.NewRecorder()
 	r.server.ServeHTTP(r.response, req)
 
@@ -154,61 +176,15 @@ func (r *REST) check(L *lua.LState) int {
 	return 0
 }
 
-// func (s *REST) Run(ctx context.Context, logf func(format string, args ...any), body []byte, state map[string]any) error {
-// 	f, err := parser.Parse(body, state)
-// 	if err != nil {
-// 		return fmt.Errorf("gql.Parse: %w", err)
-// 	}
+func (r *REST) addHeader(L *lua.LState) int {
+	key := L.CheckString(1)
+	value := L.CheckString(2)
 
-// 	return f.Execute(state, func() (any, error) {
-// 		if rowTypeRegexp.MatchString(f.Query) {
-// 			return s.queryRow(ctx, f)
-// 		}
-// 		return s.query(ctx, f)
-// 	})
-// }
+	if r.headers == nil {
+		r.headers = http.Header{}
+	}
 
-// func (r *REST) Run(ctx context.Context, logf func(format string, args ...any), body []byte, state map[string]any) error {
-// 	f, err := parser.Parse(body, state)
-// 	if err != nil {
-// 		return fmt.Errorf("rest.Parse: %w", err)
-// 	}
+	r.headers.Add(key, value)
 
-// 	expectedResponseCode := f.Opts["responseCode"]
-
-// 	delete(f.Opts, "responseCode")
-
-// 	return f.Execute(state, func() (any, error) {
-// 		rec := httptest.NewRecorder()
-
-// 		parts := strings.SplitN(f.Query, "\n", 2)
-// 		methodPath := strings.SplitN(strings.TrimSpace(parts[0]), " ", 2)
-
-// 		logf("running %v request to %v", methodPath[0], methodPath[1])
-
-// 		var body io.Reader
-// 		if len(parts) > 1 {
-// 			body = strings.NewReader(parts[1])
-// 		}
-
-// 		req, err := http.NewRequestWithContext(ctx, methodPath[0], methodPath[1], body)
-// 		if err != nil {
-// 			return nil, fmt.Errorf("rest.Run: unable to create request: %w", err)
-// 		}
-
-// 		r.server.ServeHTTP(rec, req)
-
-// 		if expectedResponseCode != "" {
-// 			if strconv.Itoa(rec.Code) != expectedResponseCode {
-// 				return nil, fmt.Errorf("expected response code %q, got %d\n%v", expectedResponseCode, rec.Code, rec.Body.String())
-// 			}
-// 		}
-
-// 		res := map[string]any{}
-// 		if err := yaml.Unmarshal(rec.Body.Bytes(), &res); err != nil {
-// 			return nil, fmt.Errorf("rest.Run: unable to unmarshal response: %w", err)
-// 		}
-
-// 		return res, nil
-// 	})
-// }
+	return 0
+}
